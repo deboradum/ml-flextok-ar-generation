@@ -1,5 +1,5 @@
 # Modified from:
-#   VQGAN:    https://github.com/CompVis/taming-transformers/blob/master/taming/modules/transformer/mingpt.py
+    #   VQGAN:    https://github.com/CompVis/taming-transformers/blob/master/taming/modules/transformer/mingpt.py
 #   DiT:      https://github.com/facebookresearch/DiT/blob/main/models.py
 #   nanoGPT:  https://github.com/karpathy/nanoGPT/blob/master/model.py
 #   llama:    https://github.com/facebookresearch/llama/blob/main/llama/model.py
@@ -195,25 +195,31 @@ class Attention(nn.Module):
         self.wo = nn.Linear(config.dim, config.dim, bias=False)
         self.kv_cache = None
 
+        # Positional embeddings
+        self.pos_embeddings = nn.Embedding(config.vocab_size, config.dim)
+
         # regularization
         self.attn_dropout_p = config.attn_dropout_p
         self.resid_dropout = nn.Dropout(config.resid_dropout_p)
 
     def forward(
-        self, x: torch.Tensor, freqs_cis: torch.Tensor = None,
+        self, x: torch.Tensor,
         input_pos: Optional[torch.Tensor] = None,
         mask: Optional[torch.Tensor] = None
     ):
         bsz, seqlen, _ = x.shape
         kv_size = self.n_kv_head * self.head_dim
+
+        # Since our tokens lack a 2D grid structure, we use learned absolute positional embeddings instead of 2D RoPE
+        positions = torch.arange(seqlen).unsqueeze(0)
+        positions = torch.tile(positions, (bsz, 1))
+        x = x + self.pos_embeddings(positions)
+
         xq, xk, xv = self.wqkv(x).split([self.dim, kv_size, kv_size], dim=-1)
 
         xq = xq.view(bsz, seqlen, self.n_head, self.head_dim)
         xk = xk.view(bsz, seqlen, self.n_kv_head, self.head_dim)
         xv = xv.view(bsz, seqlen, self.n_kv_head, self.head_dim)
-
-        xq = apply_rotary_emb(xq, freqs_cis)
-        xk = apply_rotary_emb(xk, freqs_cis)
 
         xq, xk, xv = map(lambda x: x.transpose(1, 2), (xq, xk, xv))
 
@@ -244,10 +250,9 @@ class TransformerBlock(nn.Module):
         self.attention_norm = RMSNorm(config.dim, eps=config.norm_eps)
         self.ffn_norm = RMSNorm(config.dim, eps=config.norm_eps)
 
-    def forward(
-        self, x: torch.Tensor, freqs_cis: torch.Tensor, start_pos: int, mask: Optional[torch.Tensor] = None):
+    def forward(self, x: torch.Tensor, start_pos: int, mask: Optional[torch.Tensor] = None):
         # using prenormalization with RMSNorm
-        h = x + self.attention(self.attention_norm(x), freqs_cis, start_pos, mask)
+        h = x + self.attention(self.attention_norm(x), start_pos, mask)
         # using prenormalization with RMSNorm
         out = h + self.feed_forward(self.ffn_norm(h))
         return out
@@ -281,11 +286,6 @@ class Transformer(nn.Module):
         # output layer
         self.norm = RMSNorm(config.dim, eps=config.norm_eps)
         self.output = nn.Linear(config.dim, config.vocab_size, bias=False)
-
-        # 2d rotary pos embedding
-        grid_size = int(self.block_size ** 0.5)
-        assert grid_size * grid_size == self.block_size
-        self.freqs_cis = precompute_freqs_cis_2d(grid_size, self.config.dim // self.config.n_head, self.config.rope_base, self.cls_token_num)
 
         # KVCache
         self.max_batch_size = -1
@@ -321,9 +321,6 @@ class Transformer(nn.Module):
 
         causal_mask = torch.tril(torch.ones(self.max_seq_length, self.max_seq_length, dtype=torch.bool))
         self.causal_mask = causal_mask.unsqueeze(0).repeat(self.max_batch_size, 1, 1)
-        grid_size = int(self.config.block_size ** 0.5)
-        assert grid_size * grid_size == self.block_size
-        self.freqs_cis = precompute_freqs_cis_2d(grid_size, self.config.dim // self.config.n_head, self.config.rope_base, self.cls_token_num)
 
     def forward(
         self,
@@ -339,7 +336,6 @@ class Transformer(nn.Module):
             token_embeddings = self.tok_embeddings(idx)
             token_embeddings = torch.cat((cond_embeddings, token_embeddings), dim=1)
             h = self.tok_dropout(token_embeddings)
-            self.freqs_cis = self.freqs_cis.to(h.device)
         else:
             if cond_idx is not None: # prefill in inference
                 token_embeddings = self.cls_embedding(cond_idx, train=self.training)[:,:self.cls_token_num]
@@ -349,15 +345,10 @@ class Transformer(nn.Module):
             bs = token_embeddings.shape[0]
             mask = self.causal_mask[:bs, None, input_pos]
             h = self.tok_dropout(token_embeddings)
-            self.freqs_cis = self.freqs_cis
 
-        if self.training:
-            freqs_cis = self.freqs_cis[:token_embeddings.shape[1]]
-        else:
-            freqs_cis = self.freqs_cis[input_pos]
         # transformer blocks
         for layer in self.layers:
-            h = layer(h, freqs_cis, input_pos, mask)
+            h = layer(h, input_pos, mask)
 
         # output layers
         h = self.norm(h)
@@ -380,50 +371,6 @@ class Transformer(nn.Module):
 
     def get_fsdp_wrap_module_list(self) -> List[nn.Module]:
         return list(self.layers)
-
-
-
-#################################################################################
-#                      Rotary Positional Embedding Functions                    #
-#################################################################################
-# https://github.com/pytorch-labs/gpt-fast/blob/main/model.py
-def precompute_freqs_cis(seq_len: int, n_elem: int, base: int = 10000, cls_token_num=120):
-    freqs = 1.0 / (base ** (torch.arange(0, n_elem, 2)[: (n_elem // 2)].float() / n_elem))
-    t = torch.arange(seq_len, device=freqs.device)
-    freqs = torch.outer(t, freqs) # (seq_len, head_dim // 2)
-    freqs_cis = torch.polar(torch.ones_like(freqs), freqs)
-    cache = torch.stack([freqs_cis.real, freqs_cis.imag], dim=-1) # (cls_token_num+seq_len, head_dim // 2, 2)
-    cond_cache = torch.cat([torch.zeros(cls_token_num, n_elem // 2, 2), cache]) # (cls_token_num+seq_len, head_dim // 2, 2)
-    return cond_cache
-
-
-def precompute_freqs_cis_2d(grid_size: int, n_elem: int, base: int = 10000, cls_token_num=120):
-    # split the dimension into half, one for x and one for y
-    half_dim = n_elem // 2
-    freqs = 1.0 / (base ** (torch.arange(0, half_dim, 2)[: (half_dim // 2)].float() / half_dim))
-    t = torch.arange(grid_size, device=freqs.device)
-    freqs = torch.outer(t, freqs) # (grid_size, head_dim // 2)
-    freqs_grid = torch.concat([
-        freqs[:, None, :].expand(-1, grid_size, -1),
-        freqs[None, :, :].expand(grid_size, -1, -1),
-    ], dim=-1)  # (grid_size, grid_size, head_dim // 2)
-    cache_grid = torch.stack([torch.cos(freqs_grid), torch.sin(freqs_grid)], dim=-1) # (grid_size, grid_size, head_dim // 2, 2)
-    cache = cache_grid.flatten(0, 1)
-    cond_cache = torch.cat([torch.zeros(cls_token_num, n_elem // 2, 2), cache]) # (cls_token_num+grid_size**2, head_dim // 2, 2)
-    return cond_cache
-
-
-def apply_rotary_emb(x: torch.Tensor, freqs_cis: torch.Tensor):
-    # x: (bs, seq_len, n_head, head_dim)
-    # freqs_cis (seq_len, head_dim // 2, 2)
-    xshaped = x.float().reshape(*x.shape[:-1], -1, 2) # (bs, seq_len, n_head, head_dim//2, 2)
-    freqs_cis = freqs_cis.view(1, xshaped.size(1), 1, xshaped.size(3), 2) # (1, seq_len, 1, head_dim//2, 2)
-    x_out2 = torch.stack([
-            xshaped[..., 0] * freqs_cis[..., 0] - xshaped[..., 1] * freqs_cis[..., 1],
-            xshaped[..., 1] * freqs_cis[..., 0] + xshaped[..., 0] * freqs_cis[..., 1],
-    ], dim=-1)
-    x_out2 = x_out2.flatten(3)
-    return x_out2.type_as(x)
 
 
 ### class-conditional models
