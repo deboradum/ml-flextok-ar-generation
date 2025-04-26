@@ -1,5 +1,5 @@
 # Modified from:
-    #   VQGAN:    https://github.com/CompVis/taming-transformers/blob/master/taming/modules/transformer/mingpt.py
+#   VQGAN:    https://github.com/CompVis/taming-transformers/blob/master/taming/modules/transformer/mingpt.py
 #   DiT:      https://github.com/facebookresearch/DiT/blob/main/models.py
 #   nanoGPT:  https://github.com/karpathy/nanoGPT/blob/master/model.py
 #   llama:    https://github.com/facebookresearch/llama/blob/main/llama/model.py
@@ -211,8 +211,7 @@ class Attention(nn.Module):
         kv_size = self.n_kv_head * self.head_dim
 
         # Since our tokens lack a 2D grid structure, we use learned absolute positional embeddings instead of 2D RoPE
-        positions = torch.arange(seqlen).unsqueeze(0)
-        positions = torch.tile(positions, (bsz, 1))
+        positions = torch.arange(seqlen, device=x.device).expand(bsz, seqlen)
         x = x + self.pos_embeddings(positions)
 
         xq, xk, xv = self.wqkv(x).split([self.dim, kv_size, kv_size], dim=-1)
@@ -375,19 +374,19 @@ class Transformer(nn.Module):
 
 ### class-conditional models
 def AR_49M(**kwargs):
-    return Transformer(ModelArgs(n_layer=10, n_head=, dim=640, **kwargs))
+    return Transformer(ModelArgs(n_layer=10, n_head=10, dim=640, **kwargs))
 
 def AR_85M(**kwargs):
-    return Transformer(ModelArgs(n_layer=12, n_head=, dim=768, **kwargs))
+    return Transformer(ModelArgs(n_layer=12, n_head=12, dim=768, **kwargs))
 
 def AR_201M(**kwargs):
-    return Transformer(ModelArgs(n_layer=16, n_head=, dim=1024, **kwargs))
+    return Transformer(ModelArgs(n_layer=16, n_head=16, dim=1024, **kwargs))
 
 def AR_393M(**kwargs):
-    return Transformer(ModelArgs(n_layer=20, n_head=, dim=1280, **kwargs))
+    return Transformer(ModelArgs(n_layer=20, n_head=20, dim=1280, **kwargs))
 
 def AR_679M(**kwargs):
-    return Transformer(ModelArgs(n_layer=24, n_head=, dim=1536, **kwargs))
+    return Transformer(ModelArgs(n_layer=24, n_head=24, dim=1536, **kwargs))
 
 def AR_1330M(**kwargs):
-    return Transformer(ModelArgs(n_layer=30, n_head=, dim=1920, **kwargs))
+    return Transformer(ModelArgs(n_layer=30, n_head=30, dim=1920, **kwargs))
