@@ -1,5 +1,6 @@
 import time
 import torch
+import wandb
 
 from trainUtils import TrainArgs, parse_config, get_net, get_optimizer, get_loaders
 
@@ -90,26 +91,33 @@ def train(
                 taken = time.time() - s
                 avg_loss = running_loss / config.log_every
 
-                # todo: wandb log avg loss
+                wandb.log({"train_loss": avg_loss, "epoch": e, "steps": train_steps})
+                print(
+                    f"Epoch {e}, Step {train_steps}, Avg Loss: {avg_loss:.4f}, Time Taken: {taken:.2f}s"
+                )
 
                 running_loss = 0.0
                 s = time.time()
 
         val_loss = validate(flextok, ar_net, val_loader)
-        # todo: wandb log val loss
+        wandb.log({"val_loss": val_loss, "epoch": e})
 
     return validate(flextok, ar_net, test_loader)
 
 
 if __name__ == "__main__":
-    assert torch.cuda.is_available()
+    # assert torch.cuda.is_available()
 
-    model_args, train_args = parse_config("c2i_config.yaml")
-    flextok, ar_net = get_net(model_args)
+    model_args, train_args = parse_config("c2i_config_ar49M.yaml")
+    flextok, ar_net = get_net(model_args, train_args)
+    flextok.eval()
     optimizer, scheduler = get_optimizer(train_args)
     train_loader, val_loader, test_loader = get_loaders(train_args)
 
-    train(
+    complete_config = {**model_args, **train_args}
+    wandb.init(project="flektok_autoregressive_c21", config=complete_config)
+
+    test_loss = train(
         config=train_args,
         flextok=flextok,
         ar_net=ar_net,
@@ -119,3 +127,5 @@ if __name__ == "__main__":
         val_loader=val_loader,
         test_loader=test_loader,
     )
+
+    wandb.log({"test_loss": test_loss})
