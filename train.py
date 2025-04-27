@@ -21,14 +21,23 @@ def validate(
     ar_net.eval()
 
     running_loss = 0.0
+    num = 0
     with torch.no_grad:
         for X, y in loader:
             X = X.to(device)
             y = y.to(device)
 
-            # TODO
+            tokens = flextok.tokenize(X)  # returns a list of [1, L] tensors
+            tokens = torch.Tensor([toks.squeeze() for toks in tokens])  # list to (B, L)
+            c_indices = y.reshape(-1)
+            with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+                _, loss = ar_net(
+                    cond_idx=c_indices, idx=tokens[:, :-1], targets=tokens
+                )
+            running_loss += loss
+            num += 1
 
-    return running_loss / len(loader)
+    return running_loss / num
 
 
 def train(
@@ -57,15 +66,17 @@ def train(
             scheduler.step()
 
         for X, y in train_loader:
+            X = X.to(device)
+            y = y.to(device)
             optimizer.zero_grad()
 
             with torch.no_grad:
-                tokens = flextok.tokenize(X)
-            z_indices = tokens.reshape(tokens.shape[0], -1)
+                tokens = flextok.tokenize(X)  # returns a list of [1, L] tensors
+                tokens = torch.Tensor([toks.squeeze() for toks in tokens])  # list to (B, L)
             c_indices = y.reshape(-1)
             with torch.cuda.amp.autocast(dtype=torch.bfloat16):
                 _, loss = ar_net(
-                    cond_idx=c_indices, idx=z_indices[:, :-1], targets=z_indices
+                    cond_idx=c_indices, idx=tokens[:, :-1], targets=tokens
                 )
             loss.backward()
             if config.gradient_clipping_norm != 0.0:
