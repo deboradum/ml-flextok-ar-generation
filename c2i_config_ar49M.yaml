@@ -1,0 +1,42 @@
+trainArgs:
+  model: "AR_49M"
+  epochs: 300
+  warmup_epochs: 30
+  warmup_learning_rate: 1e-6
+  learning_rate_schedule: "cosine"
+  optimizer: "AdamW"
+  beta_1: 0.9
+  beta_2: 0.95
+  batch_size: 1024
+  learning_rate: 1.2e-3  # Depends on model
+  final_learning_rate: 1.2e-5  # Depends on model, is 1% of learning_rate
+  weight_decay: 0.05
+  gradient_clipping_norm: 1.0
+  log_every: 100
+  flextok_model: "EPFL-VILAB/flextok_d18_d28_dfn"
+
+modelArgs:
+  dim: 640
+  n_layer: 10
+  n_head: 10
+  n_kv_head: null
+  multiple_of: 256
+  norm_eps: 1e-5
+  initializer_range: 0.02
+
+  token_dropout_p: 0.1
+  attn_dropout_p: 0.1
+  resid_dropout_p: 0.1
+  ffn_dropout_p: 0.1
+  drop_path_rate: 0.1
+
+  num_classes: 85
+  caption_dim: 2048
+  class_dropout_prob: 0.1
+  model_type: "c2i"
+
+  vocab_size: 64000
+  cls_token_num: 1
+  block_size: 256
+  max_batch_size: 32
+  max_seq_len: 256
