@@ -26,7 +26,6 @@ class ModelArgs:
     n_head: int = 32
     n_kv_head: Optional[int] = None
     multiple_of: int = 256  # make SwiGLU hidden layer size multiple of large power of 2
-    rope_base: float = 10000
     norm_eps: float = 1e-5
     initializer_range: float = 0.02
 
@@ -373,20 +372,26 @@ class Transformer(nn.Module):
 
 
 ### class-conditional models
+# w = 64·d ... The number of attention heads is set to d
 def AR_49M(**kwargs):
     return Transformer(ModelArgs(n_layer=10, n_head=10, dim=640, **kwargs))
 
+# w = 64·d ... The number of attention heads is set to d
 def AR_85M(**kwargs):
     return Transformer(ModelArgs(n_layer=12, n_head=12, dim=768, **kwargs))
 
+# w = 64·d ... The number of attention heads is set to d
 def AR_201M(**kwargs):
     return Transformer(ModelArgs(n_layer=16, n_head=16, dim=1024, **kwargs))
 
+# w = 64·d ... The number of attention heads is set to d
 def AR_393M(**kwargs):
     return Transformer(ModelArgs(n_layer=20, n_head=20, dim=1280, **kwargs))
 
+# w = 64·d ... The number of attention heads is set to d
 def AR_679M(**kwargs):
     return Transformer(ModelArgs(n_layer=24, n_head=24, dim=1536, **kwargs))
 
+# w = 64·d ... The number of attention heads is set to d
 def AR_1330M(**kwargs):
     return Transformer(ModelArgs(n_layer=30, n_head=30, dim=1920, **kwargs))
