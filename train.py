@@ -32,7 +32,7 @@ def validate(
             y = y.to(device)
 
             tokens = flextok.tokenize(X)  # returns a list of [1, L] tensors
-            tokens = torch.Tensor([toks.squeeze() for toks in tokens])  # list to (B, L)
+            tokens = torch.stack([toks.squeeze() for toks in tokens])  # list to (B, L)
             c_indices = y.reshape(-1)
             with torch.cuda.amp.autocast(dtype=torch.bfloat16):
                 _, loss = ar_net(
@@ -77,7 +77,7 @@ def train(
 
             with torch.no_grad():
                 tokens = flextok.tokenize(X)  # returns a list of [1, L] tensors
-                tokens = torch.Tensor([toks.squeeze() for toks in tokens])  # list to (B, L)
+                tokens = torch.stack([toks.squeeze() for toks in tokens])  # list to (B, L)
             c_indices = y.reshape(-1)
             with torch.cuda.amp.autocast(dtype=torch.bfloat16):
                 _, loss = ar_net(
@@ -113,7 +113,7 @@ def train(
 
 
 if __name__ == "__main__":
-    # assert torch.cuda.is_available()
+    assert torch.cuda.is_available()
 
     model_args, train_args = parse_config("c2i_config_ar49M.yaml")
     flextok, ar_net = get_net(model_args, train_args)
