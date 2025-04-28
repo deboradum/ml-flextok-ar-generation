@@ -38,6 +38,7 @@ class TrainArgs:
     log_every: int = 100
     flextok_model: str = "EPFL-VILAB/flextok_d18_d28_dfn"
     dataset: str = "imagenet"
+    dataset_path: str = "./data/imagenet"
 
 
 def parse_config(config_path="config.yaml"):
@@ -123,14 +124,37 @@ def get_imagenet_loaders(batch_size, data_dir="data/imagenet"):
 
 
 def get_geoguessr_loaders(batch_size, data_dir="data/geoguessr"):
+    transform = transforms.Compose(
+        [
+            transforms.RandomCrop((900, 900)),
+            transforms.Resize((256, 256), antialias=True),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+    train_dataset = datasets.ImageFolder(root=f"{data_dir}/train/", transform=transform)
+    val_dataset = datasets.ImageFolder(root=f"{data_dir}/valid/", transform=transform)
+    test_dataset = datasets.ImageFolder(root=f"{data_dir}/test/", transform=transform)
 
-    return
+    train_loader = DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=True, num_workers=4
+    )
+    val_loader = DataLoader(
+        val_dataset, batch_size=batch_size, shuffle=False, num_workers=4
+    )
+    test_loader = DataLoader(
+        test_dataset, batch_size=batch_size, shuffle=False, num_workers=4
+    )
+
+    return train_loader, val_loader, test_loader
+
 
 def get_loaders(config: TrainArgs):
     print("Preparing data loaders")
     if config.dataset == "imagenet":
-        return get_imagenet_loaders(config.batch_size, data_dir="/Users/personal/Desktop/ivq-transformer/data/imagenet256")
+        return get_imagenet_loaders(config.batch_size, data_dir=config.dataset_path)
     elif config.dataset == "geoguessr":
-        return get_geoguessr_loaders(config.batch_size, data_dir="data/geoguessr")
+        return get_geoguessr_loaders(config.batch_size, data_dir=config.dataset_path)
     else:
         raise NotImplementedError

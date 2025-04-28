@@ -15,6 +15,7 @@ trainArgs:
   log_every: 1
   flextok_model: "EPFL-VILAB/flextok_d18_d28_dfn"
   dataset: "imagenet"
+  dataset_path: "/Users/personal/Desktop/ivq-transformer/data/imagenet256"
 
 modelArgs:
   dim: 640
