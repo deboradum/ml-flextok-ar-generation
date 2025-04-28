@@ -2,7 +2,11 @@ import yaml
 import torch
 
 import torch.optim as optim
+import torchvision.transforms as transforms
+
+from torchvision import datasets
 from dataclasses import dataclass
+from torch.utils.data import DataLoader, random_split
 
 from flextok.flextok_wrapper import FlexTokFromHub
 from autoregressive.models import ModelArgs, Transformer
@@ -33,6 +37,7 @@ class TrainArgs:
     gradient_clipping_norm: float = 1.0
     log_every: int = 100
     flextok_model: str = "EPFL-VILAB/flextok_d18_d28_dfn"
+    dataset: str = "imagenet"
 
 
 def parse_config(config_path="config.yaml"):
@@ -46,7 +51,8 @@ def parse_config(config_path="config.yaml"):
 
 
 def get_net(model_config: ModelArgs, train_config: TrainArgs):
-    ar_net = Transformer(model_config)
+    print("Preparing models")
+    ar_net = Transformer(model_config).to(device)
 
     flextok_net = (
         FlexTokFromHub.from_pretrained(train_config.flextok_model)
@@ -60,6 +66,7 @@ def get_net(model_config: ModelArgs, train_config: TrainArgs):
 
 
 def get_optimizer(config: TrainArgs, net):
+    print("Preparing optimizer")
     if config.optimizer == "AdamW":
         optimizer = optim.AdamW(
             net.parameters(),
@@ -78,5 +85,52 @@ def get_optimizer(config: TrainArgs, net):
     return optimizer, scheduler
 
 
-def get_loaders(config: TrainArgs):
+def get_imagenet_loaders(batch_size, data_dir="data/imagenet"):
+    transform = transforms.Compose(
+        [
+            # TODO: Additionally we produce 10 random crops per image prior to tokenization(Sun et al., 2024)
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+            ),
+        ]
+    )
+
+    full_dataset = datasets.ImageFolder(root=data_dir, transform=transform)
+
+    train_size = int(0.8 * len(full_dataset))
+    val_test_size = len(full_dataset) - train_size
+    val_size = val_test_size // 2
+    test_size = val_test_size - val_size
+
+    train_dataset, val_test_dataset = random_split(
+        full_dataset, [train_size, val_test_size]
+    )
+    val_dataset, test_dataset = random_split(val_test_dataset, [val_size, test_size])
+
+    train_loader = DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=True, num_workers=2
+    )
+    val_loader = DataLoader(
+        val_dataset, batch_size=batch_size, shuffle=False, num_workers=2
+    )
+    test_loader = DataLoader(
+        test_dataset, batch_size=batch_size, shuffle=False, num_workers=2
+    )
+
+    return train_loader, val_loader, test_loader
+
+
+def get_geoguessr_loaders(batch_size, data_dir="data/geoguessr"):
+
     return
+
+def get_loaders(config: TrainArgs):
+    print("Preparing data loaders")
+    if config.dataset == "imagenet":
+        return get_imagenet_loaders(config.batch_size, data_dir="/Users/personal/Desktop/ivq-transformer/data/imagenet256")
+    elif config.dataset == "geoguessr":
+        return get_geoguessr_loaders(config.batch_size, data_dir="data/geoguessr")
+    else:
+        raise NotImplementedError
