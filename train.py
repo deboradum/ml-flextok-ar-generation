@@ -106,7 +106,7 @@ def train(
         val_loss = validate(flextok, ar_net, val_loader)
         wandb.log({"val_loss": val_loss, "epoch": e})
 
-        snapshot_path = os.path.join("{fconfig.checkpoint_path}_{e}.pt")
+        snapshot_path = os.path.join(f"{config.checkpoint_path}_{e}.pt")
         torch.save(ar_net.state_dict(), snapshot_path)
 
     return validate(flextok, ar_net, test_loader)
