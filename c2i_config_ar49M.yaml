@@ -2,18 +2,19 @@ trainArgs:
   model: "AR_49M"
   epochs: 300
   warmup_epochs: 30
-  warmup_learning_rate: 1e-6
+  warmup_learning_rate: 1.0e-6
   learning_rate_schedule: "cosine"
   optimizer: "AdamW"
   beta_1: 0.9
   beta_2: 0.95
-  batch_size: 1024
+  batch_size: 16
   learning_rate: 1.2e-3  # Depends on model
   final_learning_rate: 1.2e-5  # Depends on model, is 1% of learning_rate
   weight_decay: 0.05
   gradient_clipping_norm: 1.0
-  log_every: 100
+  log_every: 1
   flextok_model: "EPFL-VILAB/flextok_d18_d28_dfn"
+  dataset: "imagenet"
 
 modelArgs:
   dim: 640
@@ -21,7 +22,7 @@ modelArgs:
   n_head: 10
   n_kv_head: null
   multiple_of: 256
-  norm_eps: 1e-5
+  norm_eps: 1.0e-5
   initializer_range: 0.02
 
   token_dropout_p: 0.1

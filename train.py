@@ -2,6 +2,8 @@ import time
 import torch
 import wandb
 
+from dataclasses import asdict
+
 from trainUtils import TrainArgs, parse_config, get_net, get_optimizer, get_loaders
 
 device = torch.device(
@@ -23,7 +25,7 @@ def validate(
 
     running_loss = 0.0
     num = 0
-    with torch.no_grad:
+    with torch.no_grad():
         for X, y in loader:
             X = X.to(device)
             y = y.to(device)
@@ -57,7 +59,7 @@ def train(
     running_loss = 0.0
     s = time.time()
 
-    for e in config.epochs:
+    for e in range(config.epochs):
         if e < train_args.warmup_epochs:
             # Linear warmup
             lr = warmup_lr + (initial_lr - warmup_lr) * (e / config.warmup_epochs)
@@ -71,7 +73,7 @@ def train(
             y = y.to(device)
             optimizer.zero_grad()
 
-            with torch.no_grad:
+            with torch.no_grad():
                 tokens = flextok.tokenize(X)  # returns a list of [1, L] tensors
                 tokens = torch.Tensor([toks.squeeze() for toks in tokens])  # list to (B, L)
             c_indices = y.reshape(-1)
@@ -111,10 +113,10 @@ if __name__ == "__main__":
     model_args, train_args = parse_config("c2i_config_ar49M.yaml")
     flextok, ar_net = get_net(model_args, train_args)
     flextok.eval()
-    optimizer, scheduler = get_optimizer(train_args)
+    optimizer, scheduler = get_optimizer(train_args, ar_net)
     train_loader, val_loader, test_loader = get_loaders(train_args)
 
-    complete_config = {**model_args, **train_args}
+    complete_config = {**asdict(model_args), **asdict(train_args)}
     wandb.init(project="flektok_autoregressive_c21", config=complete_config)
 
     test_loss = train(
