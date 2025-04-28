@@ -158,7 +158,7 @@ class FeedForward(nn.Module):
 
     def forward(self, x):
         # use SwiGLU like in https://arxiv.org/abs/2502.13967
-        return self.ffn_dropout(self.w2(F.SwiGLU(self.w1(x)) * self.w3(x)))
+        return self.ffn_dropout(self.w2(F.silu(self.w1(x)) * self.w3(x)))
 
 
 class KVCache(nn.Module):
