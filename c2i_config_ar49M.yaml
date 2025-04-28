@@ -16,6 +16,7 @@ trainArgs:
   flextok_model: "EPFL-VILAB/flextok_d18_d28_dfn"
   dataset: "imagenet"
   dataset_path: "/Users/personal/Desktop/ivq-transformer/data/imagenet256"
+  checkpoint_path: "./checkpoints/c2i_ar49M"
 
 modelArgs:
   dim: 640

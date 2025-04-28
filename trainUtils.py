@@ -39,6 +39,7 @@ class TrainArgs:
     flextok_model: str = "EPFL-VILAB/flextok_d18_d28_dfn"
     dataset: str = "imagenet"
     dataset_path: str = "./data/imagenet"
+    checkpoint_path: str = "./checkpoints/c2i_ar49M"  # epoch and extension gets added automatically.
 
 
 def parse_config(config_path="config.yaml"):

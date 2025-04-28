@@ -1,3 +1,4 @@
+import os
 import time
 import torch
 import wandb
@@ -53,6 +54,7 @@ def train(
     val_loader: torch.utils.data.DataLoader,
     test_loader: torch.utils.data.DataLoader,
 ):
+    os.makedirs(config.checkpoint_path, exist_ok=True)
     warmup_lr = config.warmup_learning_rate
     initial_lr = config.learning_rate
     train_steps = 0
@@ -103,6 +105,9 @@ def train(
 
         val_loss = validate(flextok, ar_net, val_loader)
         wandb.log({"val_loss": val_loss, "epoch": e})
+
+        snapshot_path = os.path.join("{fconfig.checkpoint_path}_{e}.pt")
+        torch.save(ar_net.state_dict(), snapshot_path)
 
     return validate(flextok, ar_net, test_loader)
 
