@@ -124,6 +124,7 @@ def get_imagenet_loaders(batch_size, data_dir="data/imagenet"):
     return train_loader, val_loader, test_loader
 
 
+# https://huggingface.co/datasets/deboradum/GeoGuessr-countries-large
 def get_geoguessr_loaders(batch_size, data_dir="data/geoguessr"):
     transform = transforms.Compose(
         [

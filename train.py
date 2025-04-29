@@ -94,10 +94,13 @@ def train(
             if train_steps % config.log_every == 0:
                 taken = time.time() - s
                 avg_loss = running_loss / config.log_every
+                ips = config.log_every / taken
 
                 wandb.log({"train_loss": avg_loss, "epoch": e, "steps": train_steps})
                 print(
-                    f"Epoch {e}, step {i}/{len(train_loader)} (global step {train_steps}), Avg Loss: {avg_loss:.4f}, Time Taken: {taken:.2f}s"
+                    f"Epoch {e}, step {i}/{len(train_loader)} (global step {train_steps}),",
+                    f"Avg Loss: {avg_loss:.4f},",
+                    f"Time Taken: {taken:.2f}s, ({ips:.2f} i/s)",
                 )
 
                 running_loss = 0.0
