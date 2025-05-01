@@ -15,6 +15,8 @@ device = torch.device(
     else "cpu"
 )
 
+TARGET_BATCH_SIZE = 1024
+
 
 def validate(
     flextok: torch.nn.Module,
@@ -61,6 +63,14 @@ def train(
     running_loss = 0.0
     s = time.time()
 
+    accumulation_update_interval = TARGET_BATCH_SIZE // config.batch_size
+    assert (
+        accumulation_update_interval >= 1
+    ), "accumulation_update_interval must be one or greater. (is {accumulation_update_interval})"
+    print(
+        f"Target batch size is {TARGET_BATCH_SIZE}, training batch size is {config.batch_size}. Updating model parameters every {accumulation_update_interval} steps."
+    )
+
     for e in range(config.epochs):
         if e < train_args.warmup_epochs:
             # Linear warmup
@@ -70,23 +80,28 @@ def train(
         else:
             scheduler.step()
 
+        optimizer.zero_grad()
         for i, (X, y) in enumerate(train_loader):
             X = X.to(device)
             y = y.to(device)
-            optimizer.zero_grad()
 
             with torch.no_grad():
                 tokens = flextok.tokenize(X)  # returns a list of [1, L] tensors
                 tokens = torch.stack([toks.squeeze() for toks in tokens])  # list to (B, L)
             c_indices = y.reshape(-1)
+
             with torch.cuda.amp.autocast(dtype=torch.bfloat16):
                 _, loss = ar_net(
                     cond_idx=c_indices, idx=tokens[:, :-1], targets=tokens
                 )
+                loss = loss / accumulation_update_interval
             loss.backward()
-            if config.gradient_clipping_norm != 0.0:
-                torch.nn.utils.clip_grad_norm_(ar_net.parameters(), config.gradient_clipping_norm)
-            optimizer.step()
+
+            if i+1 % accumulation_update_interval == 0:
+                if config.gradient_clipping_norm != 0.0:
+                    torch.nn.utils.clip_grad_norm_(ar_net.parameters(), config.gradient_clipping_norm)
+                optimizer.step()
+                optimizer.zero_grad()
 
             running_loss += loss.item()
             train_steps += 1
