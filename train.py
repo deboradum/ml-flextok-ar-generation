@@ -133,7 +133,10 @@ def train(
         wandb.log({"val_loss": val_loss, "epoch": e})
 
         snapshot_path = os.path.join(f"{config.checkpoint_path}_{e}.pt")
-        torch.save(ar_net.state_dict(), snapshot_path)
+        try:
+            torch.save(ar_net.state_dict(), snapshot_path)
+        except Exception as e:
+            print(f"Could not save model to {snapshot_path}", e)
 
     return validate(flextok, ar_net, test_loader)
 
