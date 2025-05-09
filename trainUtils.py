@@ -87,6 +87,7 @@ def get_optimizer(config: TrainArgs, net):
     return optimizer, scheduler
 
 
+# https://www.kaggle.com/datasets/dimensi0n/imagenet-256
 def get_imagenet_loaders(batch_size, data_dir="data/imagenet"):
     transform = transforms.Compose(
         [
