@@ -81,7 +81,7 @@ def train(
         else:
             scheduler.step()
 
-        optimizer.zero_grad()
+        current_lr = optimizer.param_groups[0]["lr"]
         for i, (X, y) in enumerate(train_loader):
             X = X.to(device)
             y = y.to(device)
@@ -112,7 +112,14 @@ def train(
                 avg_loss = running_loss / config.log_every
                 ips = config.log_every / taken
 
-                wandb.log({"train_loss": avg_loss, "epoch": e, "steps": train_steps})
+                wandb.log(
+                    {
+                        "train_loss": avg_loss,
+                        "epoch": e,
+                        "steps": train_steps,
+                        "learning_rate": current_lr,
+                    }
+                )
                 print(
                     f"Epoch {e}, step {i}/{len(train_loader)} (global step {train_steps}),",
                     f"Avg Loss: {avg_loss:.4f},",
