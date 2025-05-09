@@ -1,0 +1,15 @@
+diffusers
+einops
+huggingface_hub
+hydra-core
+mup
+numpy
+Pillow
+PyYAML
+PyYAML
+Requests
+safetensors
+torch
+torchvision
+tqdm
+wandb
