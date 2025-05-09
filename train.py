@@ -73,6 +73,7 @@ def train(
 
     for e in range(config.epochs):
         if e < train_args.warmup_epochs:
+            print("Warmup epoch")
             # Linear warmup
             lr = warmup_lr + (initial_lr - warmup_lr) * (e / config.warmup_epochs)
             for param_group in optimizer.param_groups:
