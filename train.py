@@ -97,7 +97,7 @@ def train(
                 loss = loss / accumulation_update_interval
             loss.backward()
 
-            if i+1 % accumulation_update_interval == 0:
+            if (i + 1) % accumulation_update_interval == 0:
                 if config.gradient_clipping_norm != 0.0:
                     torch.nn.utils.clip_grad_norm_(ar_net.parameters(), config.gradient_clipping_norm)
                 optimizer.step()
