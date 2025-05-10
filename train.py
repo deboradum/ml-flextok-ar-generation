@@ -56,7 +56,6 @@ def train(
     val_loader: torch.utils.data.DataLoader,
     test_loader: torch.utils.data.DataLoader,
 ):
-    os.makedirs(config.checkpoint_path, exist_ok=True)
     warmup_lr = config.warmup_learning_rate
     initial_lr = config.learning_rate
     train_steps = 0
@@ -132,7 +131,7 @@ def train(
         val_loss = validate(flextok, ar_net, val_loader)
         wandb.log({"val_loss": val_loss, "epoch": e})
 
-        snapshot_path = os.path.join(f"{config.checkpoint_path}_{e}.pt")
+        snapshot_path = os.path.join(f"{config.checkpoint_path}/epoch_{e}.pt")
         try:
             torch.save(ar_net.state_dict(), snapshot_path)
         except Exception as e:
@@ -143,8 +142,9 @@ def train(
 
 if __name__ == "__main__":
     assert torch.cuda.is_available()
+    config_path = "c2i_config_ar49M.yaml"
 
-    model_args, train_args = parse_config("c2i_config_ar49M.yaml")
+    model_args, train_args = parse_config(config_path)
     flextok, ar_net = get_net(model_args, train_args)
     flextok.eval()
     optimizer, scheduler = get_optimizer(train_args, ar_net)
@@ -152,6 +152,9 @@ if __name__ == "__main__":
 
     complete_config = {**asdict(model_args), **asdict(train_args)}
     wandb.init(project="flektok_autoregressive_c21", config=complete_config)
+
+    os.makedirs(train_args.checkpoint_path, exist_ok=True)
+    shutil.copy(config_path, train_args.checkpoint_path)
 
     test_loss = train(
         config=train_args,
