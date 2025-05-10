@@ -2,6 +2,7 @@ import os
 import time
 import torch
 import wandb
+import shutil
 
 from dataclasses import asdict
 
@@ -79,6 +80,11 @@ def train(
                 param_group['lr'] = lr
         else:
             scheduler.step()
+
+        if e < config.skip_epochs:
+            print(f"Skipping epoch {e}")
+            train_steps += len(train_loader)
+            continue
 
         current_lr = optimizer.param_groups[0]["lr"]
         for i, (X, y) in enumerate(train_loader):

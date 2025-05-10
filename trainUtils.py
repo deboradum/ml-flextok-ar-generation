@@ -1,3 +1,4 @@
+import os
 import yaml
 import torch
 
@@ -40,6 +41,8 @@ class TrainArgs:
     dataset: str = "imagenet"
     dataset_path: str = "./data/imagenet"
     checkpoint_path: str = "./checkpoints/c2i_ar49M"  # epoch and extension gets added automatically.
+    load_from_path: str = "none"
+    skip_epochs: int = -1
 
 
 def parse_config(config_path="config.yaml"):
@@ -55,6 +58,11 @@ def parse_config(config_path="config.yaml"):
 def get_net(model_config: ModelArgs, train_config: TrainArgs):
     print("Preparing models")
     ar_net = Transformer(model_config).to(device)
+    if os.path.isfile(train_config.load_from_path):
+        print(f"Loading model weights from {train_config.load_from_path}")
+        ar_net.load_state_dict(
+            torch.load(train_config.load_from_path, map_location=device)
+        )
 
     flextok_net = (
         FlexTokFromHub.from_pretrained(train_config.flextok_model)

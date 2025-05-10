@@ -17,6 +17,8 @@ trainArgs:
   dataset: "imagenet"
   dataset_path: "/Users/personal/Desktop/ivq-transformer/data/imagenet256"
   checkpoint_path: "./checkpoints/c2i_ar49M"
+  load_from_path: "none"
+  skip_epochs: -1
 
 modelArgs:
   dim: 640
