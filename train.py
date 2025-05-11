@@ -66,7 +66,7 @@ def train(
     accumulation_update_interval = TARGET_BATCH_SIZE // config.batch_size
     assert (
         accumulation_update_interval >= 1
-    ), "accumulation_update_interval must be one or greater. (is {accumulation_update_interval})"
+    ), f"accumulation_update_interval must be one or greater. (is {accumulation_update_interval})"
     print(
         f"Target batch size is {TARGET_BATCH_SIZE}, training batch size is {config.batch_size}. Updating model parameters every {accumulation_update_interval} steps."
     )
@@ -100,6 +100,7 @@ def train(
                 _, loss = ar_net(
                     cond_idx=c_indices, idx=tokens[:, :-1], targets=tokens
                 )
+                running_loss += loss.item()
                 loss = loss / accumulation_update_interval
             loss.backward()
 
@@ -109,7 +110,6 @@ def train(
                 optimizer.step()
                 optimizer.zero_grad()
 
-            running_loss += loss.item()
             train_steps += 1
 
             if train_steps % config.log_every == 0:
