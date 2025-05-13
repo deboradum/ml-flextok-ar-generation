@@ -79,7 +79,9 @@ def train(
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
         else:
-            scheduler.step()
+            # If no warmup is used, do not call scheduler.step before training the first epoch.
+            if e:
+                scheduler.step()
 
         if e < config.skip_epochs:
             print(f"Skipping epoch {e}")
